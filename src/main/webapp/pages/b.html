@@ -1,0 +1,228 @@
+<html>
+
+<head>
+    <!--<link type="text/css" rel="stylesheet" href="/tools/css/bootstrap.min.css"/>-->
+    <!--<link type="text/css" rel="stylesheet" href="/tools/css/bootstrap-vue.css"/>-->
+    <link rel="stylesheet" type="text/css" href="/tools/css/main.css"/>
+</head>
+<script src="../js/vue.js"></script>
+<!--<script src="../js/polyfill.min.js"></script>-->
+<!--<script src="../js/bootstrap-vue.js"></script>-->
+<script src="../js/axios.js"></script>
+<body>
+<div id="app">
+    <template>
+        <div class="section1">
+            <b-alert class="error-lable">{{errorMessage}}</b-alert>
+        </div>
+
+        <div v-if="false" class="section1">
+            <span class="lable1">Root Folder</span> <input v-model="rootFolder"/>
+            <button class="button1" @click="changeRootFolder">Change</button>
+        </div>
+
+        <div class="section1">
+
+            <span class="lable1">Case No</span> <input id="caseNo" v-model="syncDownCase"/>
+            <span class="lable1">History </span><select v-model="syncDownCase">
+            <option v-for="cs in cases" :value="cs">{{cs}}</option>
+        </select>
+            <span class="lable1">Server </span><select v-model="syncDownServer">
+            <option v-for="server in servers" :value="server">{{server}}</option>
+        </select>
+            <button class="button1 running" @click="syncdown">Sync Down</button>
+
+        </div>
+
+        <div class="table1">
+            <div class="row1 header">
+                <span>ID</span>
+                <span>ACTION</span>
+                <span>CASE NO</span>
+                <span>TYPE</span>
+                <span>CUSTOMER NAME</span>
+                <span>SYNC START TIME</span>
+                <span>SYNC COMPLETE TIME</span>
+                <span>CREATE TME</span>
+                <span>LAST UPDATE TIME</span>
+                <span>REMARKS</span>
+            </div>
+            <div v-if="audit.action=='Sync Down'" v-for="audit in audits" class="row1"  @click="selectCase(audit)"  :class="highlight(audit)">
+                <span>{{audit.id}}</span>
+                <span>{{audit.action}}</span>
+                <span>{{audit.caseNo}}</span>
+                <span>{{audit.type}}</span>
+                <span>{{audit.customerName}}</span>
+                <span>{{audit.syncStartTime}}</span>
+                <span>{{audit.syncCompleteTime}}</span>
+                <span>{{audit.createTime}}</span>
+                <span>{{audit.lastUpdateTime}}</span>
+                <span @dblclick="editRemarks(audit)"   v-if="!(editId==audit.id)">{{audit.remarks}}</span>
+                <span  @dblclick="editRemarks(audit)" v-if="editId==audit.id">   <textarea @blur="saveRemark(audit)" v-model="audit.remarks"></textarea> </span>
+
+            </div>
+            <div v-if="Object.keys(audits).length === 0" class="row1 footer">No record found.</div>
+        </div>
+
+        <div class="section1">
+            <span class="lable1">Case No</span> <input v-model="syncUpCase"/>
+            <span class="lable1">ID </span><input v-model="selectedAudit.id"/>
+
+            <span class="lable1">Server </span><select v-model="syncUpServer">
+            <option v-for="server in servers" :value="server">{{server}}</option>
+        </select>
+            <button class="button1" @click="syncup(syncUpCase)">Sync Up</button>
+        </div>
+
+        <div class="table1">
+            <div class="row1 header">
+                <span>ID</span>
+                <span>ACTION</span>
+                <span>CASE NO</span>
+                <span>TYPE</span>
+                <span>CUSTOMER NAME</span>
+                <span>SYNC START TIME</span>
+                <span>SYNC COMPLETE TIME</span>
+                <span>CREATE TME</span>
+                <span>LAST UPDATE TIME</span>
+                <span>REMARKS</span>
+            </div>
+            <div v-if="audit.action=='Sync Up'" v-for="audit in audits" class="row1" >
+                <span>{{audit.id}}</span>
+                <span>{{audit.action}}</span>
+                <span>{{audit.caseNo}}</span>
+                <span>{{audit.type}}</span>
+                <span>{{audit.customerName}}</span>
+                <span>{{audit.syncStartTime}}</span>
+                <span>{{audit.syncCompleteTime}}</span>
+                <span>{{audit.createTime}}</span>
+                <span>{{audit.lastUpdateTime}}</span>
+                <span>{{audit.remarks}}</span>
+                <!--<span  @dblclick="editRemarks(audit)" v-if="editId==audit.id">   <textarea @blur="saveRemark(audit)" v-model="audit.remarks"></textarea> </span>-->
+
+            </div>
+            <div v-if="Object.keys(audits).length === 0" class="row1 footer">No record found.</div>
+        </div>
+
+
+    </template>
+</div>
+</body>
+<script>
+
+    axios.defaults.baseURL = 'http://localhost:8113/tools';
+
+    var vm = new Vue({
+        el: '#app',
+        data: {
+            servers: [],
+            cases: [],
+            syncDownCase: '',
+            syncUpCase: '',
+            syncDownServer: 'CD',
+            syncUpServer: 'CD',
+            rootFolder:'',
+            errorMessage:'fdsfsfds',
+            audits:[],
+            editId:0,
+            selectedAudit:{}
+        },
+        mounted: function () {
+            var that = this;
+            axios.post("/controller/mounted", {}).then(function (response) {
+                that.cases = response.data.cases;
+                that.servers = response.data.servers;
+                that.errorMessage=response.data.errorMessage;
+                that.rootFolder = response.data.rootFolder;
+                that.audits =  response.data.audits;
+                that.selectedAudit= response.data.selectedAudit;
+                // that.audits=response.data.audits;
+            }).catch(function (error) {
+                alert("error:" + error.statusText);
+            })
+        },
+
+        methods:{
+            highlight:function(audit){
+                return {row1_selected:(audit.id===this.selectedAudit.id)}
+            },
+            selectCase:function(audit){
+                this.syncUpCase =audit.caseNo;
+                this.syncDownCase=audit.caseNo;
+                this.selectedAudit=audit;
+                vm.$forceUpdate();
+            },
+            saveRemark:function(audit){
+                var that = this;
+                this.selectedAudit=audit;
+                this.editId=0;
+                axios.post('/controller/saveRemark', vm._$data()).then(function (response) {
+                    that.errorMessage=response.data.errorMessage;
+                    that.audits=response.data.audits;
+
+                    // alert(JSON.stringify(response.data.errorMessage));
+                }).catch(function (error) {
+                    alert("error:" + error.statusText);
+                })
+            },
+            editRemarks:function(audit){
+                this.selectedAudit=audit;
+                this.editId=audit.id;
+
+            },
+            _$data:function(){
+                var _data = {};
+                for(key in vm.$data){
+                    if(!Array.isArray(vm.$data[key])){
+                        _data[key]=vm.$data[key];
+                    }
+                }
+                return _data;
+            },
+            syncdown: function (event) {
+                alert('Start Sync Down:' + this.syncDownCase);
+                var that = this;
+                var found = false;
+                for (var i = 0; i < this.cases.length; i++) {
+                    if (this.cases[i] == this.syncDownCase) {
+                        found = true;
+                        break;
+                    }
+                }
+                if (!found) {
+                    this.cases.push(this.syncDownCase);
+                }
+                axios.post('/controller/syncdown', vm._$data()).then(function (response) {
+                    that.errorMessage=response.data.errorMessage;
+                    that.audits=response.data.audits;
+                    alert(JSON.stringify(response.data.errorMessage));
+                }).catch(function (error) {
+                    alert("error:" + error.statusText);
+                })
+            },
+            syncup: function (caseNo) {
+                alert('Start Sync Up:' + this.syncUpCase);
+                var that = this;
+                axios.post('/controller/syncup', vm._$data()).then(function (response) {
+                    that.errorMessage=response.data.errorMessage;
+                    that.audits=response.data.audits;
+                    alert(JSON.stringify(response.data.errorMessage));
+                }).catch(function (error) {
+                    alert("error:" + error.statusText);
+                })
+            },
+            changeRootFolder:function(){
+                var that = this;
+                axios.post("/controller/changeRootFolder", vm._$data()).then(function (response) {
+                    that.cases = response.data;
+                    that.errorMessage=response.data.errorMessage;
+                    that.audits=response.data.audits;
+                }).catch(function (error) {
+                    alert("error:" + error.statusText);
+                })
+            }
+        }
+    });
+
+</script>
+</html>
